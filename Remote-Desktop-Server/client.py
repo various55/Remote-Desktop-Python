@@ -1,43 +1,57 @@
-#!/usr/bin/env python
-# Client.py of 'Remote Desktop'
-
+from PIL import ImageGrab
 import pyautogui as pg
 import socket
+import io
+host = '127.0.0.1'
+port = 9091
 
-host = input('Host: ')  # as both code is running on same pc
-port = int(input('Port: '))  # socket server port number
+def send_Img(socket):
+    print('Send')
+    img = ImageGrab.grab()
+    img_bytes = io.BytesIO()
+    img.save(img_bytes, format='PNG')
+    socket.send(img_bytes.getvalue())
+if __name__ == '__main__':
+    isFirst = True
+    client_socket = socket.socket()
+    client_socket.connect((host, port))
 
-client_socket = socket.socket()  # instantiate
-client_socket.connect((host, port))  # connect to the server
-
-message = 'done'
-while True:
-    try:
-        while message.lower().strip() != 'bye':
-            client_socket.send(message.encode())  # send message
-            data = client_socket.recv(1024).decode()  # receive response
-            if data == 'click':
-                pg.click(x, y)
-            elif data == 'del':
+    while True:
+        try:
+            if(isFirst) :
+                send_Img(client_socket)
+                isFirst = False
+            data = client_socket.recv(1024).decode()
+            data = data.split()
+            if data[0] == '1':
+                x = int(data[1])
+                y = int(data[2])
+                pg.click(x, y,button='left')
+            elif data[0] == '3':
+                x = int(data[1])
+                y = int(data[2])
+                pg.click(x,y,button='right')
+            elif data[0] == 'Scroll':
+                delta =  int(data[1])
+                pg.scroll(delta)
+            elif data[0] == 'del':
                 pg.typewrite(['backspace'])
-            elif data.startswith('cde:'):
-                pg.write(data.replace('cde:', ''))
-            elif data=='rclick':
-                pg.click(button='right')
-            elif data=='dclick':
-                pg.click(clicks=2)
-            elif data=='nl':
-                pg.typewrite(['enter'])
+            elif data[0] == 'Key':
+                msg = data[1]
+                if(msg == 'enter'):
+                    pg.press('enter')
+                elif (msg == 'space'):
+                    pg.press('space')
+                    #test alo
+                else:
+                    pg.typewrite(msg)
             else:
-                x = int(data.split(' ')[0])
-                y = int(data.split(' ')[1])
+                x = int(data[0])
+                y = int(data[1])
                 pg.moveTo(x, y)  # show in terminal
-            message = 'done' # again take input
+                print('Move ',x,y)
+        except:
+            pass
+        finally:
+            send_Img(client_socket)
 
-        client_socket.close()  # close the connection
-    except:
-        pass
-# Created by vismodo: https://github.com/vismodo/
-# Email: vismaya.atreya@outlook.com
-# Repository: https://github.com/vismodo/Remote-Desktop (Remote Desktop)
-# Python Version: 3.9

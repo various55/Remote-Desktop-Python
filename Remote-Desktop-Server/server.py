@@ -1,73 +1,76 @@
-from win32api import GetSystemMetrics
-import socket # For network connections
-from tkinter import  *
-import tkinter as tk # To create a graphical user interface
-from PIL import Image
-
-host = '127.0.0.2'
+import socket
+import tkinter as tk
+host = '192.168.1.3'
 port = 9091
-fileName = 'screenshot.png'
 label = None
-def getImage():
-    img_bytes = conn.recv(9999999)
-    print('Image form client')
-    #data = conn.recv(1024)
-    # myFile = open(fileName, 'wb')
-    # if not img_bytes:
-    #    myFile.close()
-    # myFile.write(img_bytes)
-    # myFile.close()
-    bg = PhotoImage(data=img_bytes)
-    label.configure(image=bg)
-    label.image = bg
-    # set image
+img_copy = None
 
 
-def motion(event):
-    x, y = event.x, event.y
-    data = str(x*2)+' '+str(y*2)
+def sendData(data):
     conn.send(data.encode())
     getImage()
 
-def leftClick(event):
+def getImage():
+    img_bytes = conn.recv(999999)
+    print('Image form client')
+    image = tk.PhotoImage(data=img_bytes)
+    label.configure(image=image)
+    label.image = image
+
+def motion(event):
     x, y = event.x, event.y
-    data = 'LClick '+str(x * 2) + ' ' + str(y * 2)
-    conn.send(data.encode())
-def rightClick(event):
-    print('Right Click')
+    data = str(x)+' '+str(y)
+    sendData(data)
+
+def mouseEvent(event):
+    print(event)
     x, y = event.x, event.y
-    data = 'RClick '+str(x * 2) + ' ' + str(y * 2)
-    conn.send(data.encode())
+    data = str(event.num) + ' ' + str(x) + ' ' + str(y)
+    sendData(data)
+
+def scroll(event):
+    print('Scroll',event)
+    delta = event.delta
+    data = 'Scroll '+str(delta)
+    sendData(data)
+def key(event):
+    msg = event.char
+    code = event.keycode
+    if(code == 13):
+        msg = 'enter'
+    elif (code == 32):
+        msg = 'space'
+    print(event)
+    data = 'Key ' + msg
+    sendData(data)
 
 if __name__ == '__main__':
-
-    global x, y, data
     server_socket = socket.socket(socket.AF_INET,socket.SOCK_STREAM)
     server_socket.bind((host, port))
     server_socket.listen(10)
+    #Giao dien
+    root = tk.Tk()
+    root.title('Python Remote Trackpad')
+    root.geometry('1920x1080')
+
+    root.bind('<Motion>', motion)
+    root.bind("<Button-1>", mouseEvent)
+    root.bind("<Button-3>", mouseEvent)
+    root.bind("<MouseWheel>", scroll)
+    root.bind("<Key>",key)
     print('Waiting ......')
     while True:
         try:
             conn, address = server_socket.accept()
             print("Connection from: " + str(address))
-            root = tk.Tk()
-            # title
-            root.title('Python Remote Trackpad')
-            # set full màn hình
-            # root.attributes("-fullscreen", True)
-            # size máy
-            ###
-            # width = GetSystemMetrics(0)
-            # height = GetSystemMetrics(1)
-            root.geometry('1280x960')
-            img_bytes = conn.recv(9999999)
-            bg = PhotoImage(data = img_bytes)
-            label = tk.Label(root,image = bg )
+            img_bytes = conn.recv(999999)
+            image = tk.PhotoImage(data = img_bytes)
+            label = tk.Label(root,image = image)
             label.place(x=0,y=0)
-            root.bind('<Motion>', motion)
-            root.bind("<Button-1>", leftClick)
-            root.bind("<Button-3>", rightClick)
+            label.pack()
             root.mainloop()
+        except:
+            pass
         finally:
             conn.close()
 
